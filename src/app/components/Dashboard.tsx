@@ -9,6 +9,7 @@ import {
   DEFAULT_SHEET_GID,
   DEFAULT_SHEET_ID,
   buildSheetApiUrl,
+  ensureSheetApiUrl,
   fetchSheetData,
   getUniqueValues,
   type RepairRecord,
@@ -31,7 +32,7 @@ export default function Dashboard() {
   const apiUrl = useMemo(() => {
     const directUrl = import.meta.env.VITE_SHEET_API_URL || "";
     if (directUrl.trim()) {
-      return directUrl.trim();
+      return ensureSheetApiUrl(directUrl, DEFAULT_SHEET_ID, DEFAULT_SHEET_GID);
     }
 
     const scriptUrl = import.meta.env.VITE_SHEET_SCRIPT_URL || "";
@@ -278,6 +279,11 @@ export default function Dashboard() {
         {error ? (
           <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
             {error}
+          </div>
+        ) : null}
+        {!isLoading && !error && data.length === 0 ? (
+          <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+            Live API returned 0 records. On Vercel, verify `VITE_SHEET_API_URL` is set in Project Settings and redeploy.
           </div>
         ) : null}
         <Outlet context={outletContext} />

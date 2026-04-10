@@ -181,6 +181,27 @@ export function buildSheetApiUrl(scriptUrl: string, sheetId = DEFAULT_SHEET_ID, 
   return url.toString();
 }
 
+export function ensureSheetApiUrl(
+  inputUrl: string,
+  sheetId = DEFAULT_SHEET_ID,
+  gid = DEFAULT_SHEET_GID
+): string {
+  const trimmed = inputUrl.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  const url = new URL(trimmed);
+  if (!url.searchParams.has("sheetId")) {
+    url.searchParams.set("sheetId", sheetId);
+  }
+  if (!url.searchParams.has("gid")) {
+    url.searchParams.set("gid", String(gid));
+  }
+
+  return url.toString();
+}
+
 export function getFilteredData(
   data: RepairRecord[],
   filters: {
