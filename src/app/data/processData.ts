@@ -48,30 +48,35 @@ export const normalizeSerialNumber = (value: string): string =>
     .toUpperCase()
     .replace(/[\s-]+/g, "");
 
+const NORMALIZED_ALL_ENGINEERS = normalizeText(ALL_ENGINEERS);
+const NORMALIZED_ALL_LOCATIONS = normalizeText(ALL_LOCATIONS);
+const NORMALIZED_ALL_DAMAGE_TYPES = normalizeText(ALL_DAMAGE_TYPES);
+const NORMALIZED_ALL_CLIENTS = normalizeText(ALL_CLIENTS);
+
 const isAllSelection = (value: string, field: "engineer" | "location" | "damageType" | "client"): boolean => {
   if (!value) {
     return true;
   }
 
   if (field === "engineer") {
-    if (value === ALL_ENGINEERS) {
+    if (value === NORMALIZED_ALL_ENGINEERS || value === ALL_ENGINEERS) {
       return true;
     }
     return /^all engineer(s)?$/.test(value);
   }
   if (field === "location") {
-    if (value === ALL_LOCATIONS) {
+    if (value === NORMALIZED_ALL_LOCATIONS || value === ALL_LOCATIONS) {
       return true;
     }
     return /^all location(s)?$/.test(value);
   }
   if (field === "damageType") {
-    if (value === ALL_DAMAGE_TYPES) {
+    if (value === NORMALIZED_ALL_DAMAGE_TYPES || value === ALL_DAMAGE_TYPES) {
       return true;
     }
     return /^all damage type(s)?$/.test(value);
   }
-  if (value === ALL_CLIENTS) {
+  if (value === NORMALIZED_ALL_CLIENTS || value === ALL_CLIENTS) {
     return true;
   }
   return /^all client(s)?$/.test(value);

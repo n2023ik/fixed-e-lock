@@ -30,13 +30,22 @@ export default function Dashboard() {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const apiUrl = useMemo(() => {
+    const envSheetId = (import.meta.env.VITE_SHEET_ID || "").trim();
+    const envGidRaw = (import.meta.env.VITE_SHEET_GID || "").trim();
+    const envGid = Number(envGidRaw);
+    const resolvedSheetId = envSheetId || DEFAULT_SHEET_ID;
+    const resolvedGid = Number.isFinite(envGid) ? envGid : DEFAULT_SHEET_GID;
+
     const directUrl = import.meta.env.VITE_SHEET_API_URL || "";
     if (directUrl.trim()) {
-      return ensureSheetApiUrl(directUrl, DEFAULT_SHEET_ID, DEFAULT_SHEET_GID);
+      const hasExplicitSheetParams = Boolean(envSheetId || envGidRaw);
+      return hasExplicitSheetParams
+        ? ensureSheetApiUrl(directUrl, resolvedSheetId, resolvedGid)
+        : directUrl.trim();
     }
 
     const scriptUrl = import.meta.env.VITE_SHEET_SCRIPT_URL || "";
-    return buildSheetApiUrl(scriptUrl, DEFAULT_SHEET_ID, DEFAULT_SHEET_GID);
+    return buildSheetApiUrl(scriptUrl, resolvedSheetId, resolvedGid);
   }, []);
 
   useEffect(() => {
