@@ -152,13 +152,13 @@ const parseRecordDate = (value: string): Date | null => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
-export async function fetchSheetData(apiUrl: string): Promise<RepairRecord[]> {
+export async function fetchSheetData(apiUrl: string, requestInit?: RequestInit): Promise<RepairRecord[]> {
   const trimmedUrl = apiUrl.trim();
   if (!trimmedUrl) {
     return [];
   }
 
-  const response = await fetch(trimmedUrl, { cache: "no-store" });
+  const response = await fetch(trimmedUrl, { cache: "no-store", ...requestInit });
   if (!response.ok) {
     throw new Error(`Data request failed with status ${response.status}`);
   }
@@ -361,27 +361,132 @@ export function getDamageTypeDistribution(data: RepairRecord[]) {
     .sort((a, b) => b.value - a.value);
 }
 
+export interface DeviceRecurrenceEntry {
+  serial: string;
+  issue: string;
+  count: number;
+  totalCount: number;
+  engineers: string[];
+}
+
+export interface RepeatedDeviceEntry {
+  serial: string;
+  totalCount: number;
+  issue: string;
+  engineers: string[];
+}
+
 export function getDeviceRecurrences(data: RepairRecord[]) {
-  const serialCounts = new Map<string, { serial: string; count: number }>();
+  const recurrenceCounts = new Map<
+    string,
+    {
+      serial: string;
+      issue: string;
+      count: number;
+      totalCount: number;
+      engineers: Set<string>;
+    }
+  >();
+  const totalDeviceCounts = new Map<string, number>();
 
   data.forEach((record) => {
     const serial = stringify(record.serialNumber);
     const serialKey = normalizeSerialNumber(serial);
+    const issue = stringify(record.issueReported);
+    const issueKey = normalizeText(issue);
+    const engineer = stringify(record.repairedBy);
 
     if (serialKey) {
-      const current = serialCounts.get(serialKey);
-      if (current) {
-        current.count += 1;
-      } else {
-        serialCounts.set(serialKey, { serial, count: 1 });
+      totalDeviceCounts.set(serialKey, (totalDeviceCounts.get(serialKey) || 0) + 1);
+
+      if (issueKey) {
+        const key = `${serialKey}::${issueKey}`;
+        const current = recurrenceCounts.get(key);
+
+        if (current) {
+          current.count += 1;
+          if (engineer) {
+            current.engineers.add(engineer);
+          }
+        } else {
+          recurrenceCounts.set(key, {
+            serial,
+            issue,
+            count: 1,
+            totalCount: 0,
+            engineers: new Set(engineer ? [engineer] : []),
+          });
+        }
       }
     }
   });
 
-  return Array.from(serialCounts.values())
+  return Array.from(recurrenceCounts.values())
+    .map((entry) => ({
+      serial: entry.serial,
+      issue: entry.issue,
+      count: entry.count,
+      totalCount: totalDeviceCounts.get(normalizeSerialNumber(entry.serial)) || entry.count,
+      engineers: Array.from(entry.engineers).sort((a, b) => a.localeCompare(b)),
+    }))
     .filter((item) => item.count > 1)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 8);
+    .sort((a, b) => b.count - a.count);
+}
+
+export function getRepeatedDevices(data: RepairRecord[]) {
+  const deviceCounts = new Map<
+    string,
+    {
+      serial: string;
+      totalCount: number;
+      issue: string;
+      reportedDate: number;
+      engineers: Set<string>;
+    }
+  >();
+
+  data.forEach((record) => {
+    const serial = stringify(record.serialNumber);
+    const serialKey = normalizeSerialNumber(serial);
+    if (!serialKey) {
+      return;
+    }
+
+    const issue = stringify(record.issueReported);
+    const engineer = stringify(record.repairedBy);
+    const reportedDate = parseRecordDate(record.reportedDate)?.getTime() ?? 0;
+    const current = deviceCounts.get(serialKey);
+
+    if (current) {
+      current.totalCount += 1;
+      if (reportedDate >= current.reportedDate) {
+        current.issue = issue;
+        current.reportedDate = reportedDate;
+      }
+      if (engineer) {
+        current.engineers.add(engineer);
+      }
+      return;
+    }
+
+    deviceCounts.set(serialKey, {
+      serial,
+      totalCount: 1,
+      issue,
+      reportedDate,
+      engineers: new Set(engineer ? [engineer] : []),
+    });
+  });
+
+  return Array.from(deviceCounts.values())
+    .filter((item) => item.totalCount > 1)
+    .map((entry) => ({
+      serial: entry.serial,
+      totalCount: entry.totalCount,
+      issue: entry.issue,
+      engineers: Array.from(entry.engineers).sort((a, b) => a.localeCompare(b)),
+    }))
+    .sort((a, b) => b.totalCount - a.totalCount);
 }
 
 export function getUniqueValues(data: RepairRecord[], field: keyof RepairRecord): string[] {

@@ -10,14 +10,14 @@ import {
   DEFAULT_SHEET_ID,
   buildSheetApiUrl,
   ensureSheetApiUrl,
-  fetchSheetData,
   getUniqueValues,
   type RepairRecord,
 } from "../data/processData";
+import { startLiveSheetSync } from "../data/liveSheetClient";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import type { DashboardOutletContext } from "../types/dashboard";
 
-const POLL_INTERVAL_MS = 10000;
+const POLL_INTERVAL_MS = 45_000;
 
 export default function Dashboard() {
   const [engineer, setEngineer] = useState(ALL_ENGINEERS);
@@ -28,6 +28,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [syncState, setSyncState] = useState<"checking" | "live" | "retrying">("checking");
 
   const apiUrl = useMemo(() => {
     const envSheetId = (import.meta.env.VITE_SHEET_ID || "").trim();
@@ -49,44 +50,38 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    let active = true;
+    if (!apiUrl) {
+      setError("Set VITE_SHEET_API_URL or VITE_SHEET_SCRIPT_URL in your environment to load live data.");
+      setIsLoading(false);
+      return;
+    }
 
-    const loadData = async () => {
-      if (!apiUrl) {
-        setError("Set VITE_SHEET_API_URL or VITE_SHEET_SCRIPT_URL in your environment to load live data.");
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const rows = await fetchSheetData(apiUrl);
-        if (!active) {
-          return;
-        }
+    const metaUrl = (import.meta.env.VITE_SHEET_META_URL || "").trim();
+    const stopSync = startLiveSheetSync({
+      dataUrl: apiUrl,
+      metaUrl: metaUrl || undefined,
+      pollIntervalMs: POLL_INTERVAL_MS,
+      onData: (rows, meta) => {
         setData(rows);
-        setError(null);
-        setLastUpdated(new Date().toLocaleTimeString());
-      } catch (err) {
-        if (!active) {
-          return;
+        setIsLoading(false);
+        if (meta.changed) {
+          setLastUpdated(new Date().toLocaleTimeString());
         }
-        const message = err instanceof Error ? err.message : "Unable to fetch live sheet data.";
-        setError(message);
-      } finally {
-        if (active) {
-          setIsLoading(false);
+        if (!meta.fromCache) {
+          setError(null);
         }
-      }
-    };
-
-    void loadData();
-    const timer = window.setInterval(() => {
-      void loadData();
-    }, POLL_INTERVAL_MS);
+      },
+      onError: (message) => {
+        setIsLoading(false);
+        setError(`Live sync warning: ${message}. Showing last successful snapshot.`);
+      },
+      onStatus: (mode) => {
+        setSyncState(mode);
+      },
+    });
 
     return () => {
-      active = false;
-      window.clearInterval(timer);
+      stopSync();
     };
   }, [apiUrl]);
 
@@ -117,10 +112,24 @@ export default function Dashboard() {
               <p className="text-slate-400 text-xs">Field Service Analytics</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-            <span className="text-emerald-400 text-sm font-medium">LIVE DATA</span>
-            <span className="text-emerald-400/60 text-xs">{lastUpdated ? `Updated ${lastUpdated}` : "Waiting"}</span>
+          <div
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${
+              syncState === "retrying"
+                ? "bg-amber-500/10 border-amber-500/40"
+                : "bg-emerald-500/10 border-emerald-500/30"
+            }`}
+          >
+            <div
+              className={`w-2 h-2 rounded-full ${
+                syncState === "retrying" ? "bg-amber-400" : "bg-emerald-500 animate-pulse"
+              }`}
+            ></div>
+            <span className={`text-sm font-medium ${syncState === "retrying" ? "text-amber-300" : "text-emerald-400"}`}>
+              {syncState === "retrying" ? "RETRY MODE" : syncState === "checking" ? "SYNCING" : "LIVE DATA"}
+            </span>
+            <span className={`text-xs ${syncState === "retrying" ? "text-amber-200/70" : "text-emerald-400/60"}`}>
+              {lastUpdated ? `Updated ${lastUpdated}` : "Waiting"}
+            </span>
           </div>
         </div>
 
