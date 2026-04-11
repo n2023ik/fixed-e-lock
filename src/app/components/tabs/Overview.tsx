@@ -25,6 +25,8 @@ import {
   getRootCauseAnalysis,
   getDamageTypeDistribution,
   getDeviceRecurrences,
+  getRepeatedDevices,
+  normalizeSerialNumber,
 } from "../../data/processData";
 import type { DashboardOutletContext } from "../../types/dashboard";
 
@@ -32,6 +34,22 @@ const COLORS = ['#06b6d4', '#14b8a6', '#10b981', '#22c55e', '#84cc16'];
 
 export default function Overview() {
   const { filters, data } = useOutletContext<DashboardOutletContext>();
+
+  const normalizeIssueKey = (value: string) => value.toLowerCase().replace(/\s+/g, " ").trim();
+  const buildCombinedRecurrences = (rows: typeof data) => {
+    const sameCaseCountByKey = new Map(
+      getDeviceRecurrences(rows).map((entry) => [
+        `${normalizeSerialNumber(entry.serial)}::${normalizeIssueKey(entry.issue)}`,
+        entry.count,
+      ])
+    );
+
+    return getRepeatedDevices(rows).map((entry) => ({
+      ...entry,
+      sameCaseCount:
+        sameCaseCountByKey.get(`${normalizeSerialNumber(entry.serial)}::${normalizeIssueKey(entry.issue)}`) || 1,
+    }));
+  };
 
   const filteredData = getFilteredData(data, filters);
   const stats = getStats(filteredData);
@@ -41,7 +59,10 @@ export default function Overview() {
   const versionFailures = getVersionFailures(filteredData);
   const rootCauses = getRootCauseAnalysis(filteredData);
   const damageTypes = getDamageTypeDistribution(filteredData);
-  const deviceRecurrences = getDeviceRecurrences(filteredData);
+  const filteredCombinedRecurrences = buildCombinedRecurrences(filteredData);
+  const globalCombinedRecurrences = buildCombinedRecurrences(data);
+  const showingGlobalRecurrences = filteredCombinedRecurrences.length === 0 && globalCombinedRecurrences.length > 0;
+  const combinedRecurrences = showingGlobalRecurrences ? globalCombinedRecurrences : filteredCombinedRecurrences;
 
   return (
     <div className="space-y-6">
@@ -164,25 +185,37 @@ export default function Overview() {
       <div className="grid grid-cols-2 gap-6">
         {/* Device Recurrences Tracker */}
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
-          <h3 className="text-white font-semibold mb-4">Device Recurrences Tracker</h3>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h3 className="text-white font-semibold">Device Recurrences Tracker</h3>
+            <span className="text-xs text-slate-400">
+              {showingGlobalRecurrences ? "Showing global recurrences" : "Filtered recurrences"}
+            </span>
+          </div>
           <div className="space-y-2">
-            {deviceRecurrences.length === 0 ? (
+            {combinedRecurrences.length === 0 ? (
               <div className="rounded-lg border border-slate-700/60 bg-slate-900/40 px-4 py-6 text-center text-slate-400">
                 No recurring device found for the current filters.
               </div>
             ) : null}
-            {deviceRecurrences.map((device, index) => (
-              <div key={device.serial} className="flex items-center justify-between py-2 px-3 bg-slate-700/30 rounded-lg">
-                <div className="flex items-center gap-3">
+            {combinedRecurrences.map((device) => (
+              <div key={`${device.serial}-${device.issue}`} className="flex items-center justify-between gap-3 py-2 px-3 bg-slate-700/30 rounded-lg">
+                <div className="flex items-center gap-3 min-w-0">
                   <div className="w-1 h-1 rounded-full bg-amber-500"></div>
-                  <span className="text-slate-300 text-sm font-mono">{device.serial}</span>
+                  <div className="min-w-0">
+                    <div className="text-slate-300 text-sm font-mono truncate">{device.serial}</div>
+                    <div className="text-xs text-slate-500 mt-0.5 truncate">Latest case: {device.issue}</div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">Same case: {device.sameCaseCount}x</div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-400">{device.count}x</span>
+                <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                  <span className="px-2 py-1 rounded-md border border-slate-600/70 bg-slate-900/50 text-[11px] text-slate-300 max-w-[180px] truncate">
+                    {device.engineers.length > 0 ? device.engineers.join(', ') : 'No engineer'}
+                  </span>
+                  <span className="text-xs text-slate-400">{device.totalCount} repairs</span>
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                    device.count > 2 ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
+                    device.totalCount > 2 ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
                   }`}>
-                    {device.count > 2 ? 'OPEN' : 'CLOSED'}
+                    {device.totalCount > 2 ? 'OPEN' : 'CLOSED'}
                   </span>
                 </div>
               </div>

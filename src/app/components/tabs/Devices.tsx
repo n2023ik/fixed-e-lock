@@ -160,13 +160,15 @@ export default function Devices() {
             );
             return (
               <div
-                key={device.serial}
+                key={`${device.serial}-${device.issue}`}
                 className="bg-slate-700/30 border border-slate-600/50 rounded-lg p-4 hover:bg-slate-700/50 transition-colors"
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
                     <div className="text-xs text-slate-400 mb-1">Serial Number</div>
                     <div className="text-white font-mono font-medium">{device.serial}</div>
+                    <div className="text-xs text-slate-500 mt-1">Case: {device.issue}</div>
+                    <div className="text-[11px] text-slate-400 mt-1">Same case: {device.count}x</div>
                   </div>
                   <div
                     className={`px-2 py-1 rounded text-xs font-bold ${
@@ -175,7 +177,7 @@ export default function Devices() {
                         : "bg-amber-500/20 text-amber-400"
                     }`}
                   >
-                    {device.count}x
+                    {device.totalCount} repairs
                   </div>
                 </div>
                 {deviceData && (
@@ -191,6 +193,10 @@ export default function Devices() {
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-slate-400">Last Issue:</span>
                       <span className="text-slate-300">{deviceData.issueReported}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-400">Engineers:</span>
+                      <span className="text-slate-300 text-right">{device.engineers.length > 0 ? device.engineers.join(', ') : 'N/A'}</span>
                     </div>
                   </div>
                 )}
