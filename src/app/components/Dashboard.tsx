@@ -14,6 +14,7 @@ import {
   type RepairRecord,
 } from "../data/processData";
 import { startLiveSheetSync } from "../data/liveSheetClient";
+import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import type { DashboardOutletContext } from "../types/dashboard";
 
@@ -24,6 +25,9 @@ export default function Dashboard() {
   const [location, setLocation] = useState(ALL_LOCATIONS);
   const [damageType, setDamageType] = useState(ALL_DAMAGE_TYPES);
   const [client, setClient] = useState(ALL_CLIENTS);
+  const [searchId, setSearchId] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [data, setData] = useState<RepairRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +95,7 @@ export default function Dashboard() {
   const clients = getUniqueValues(data, "clientName");
 
   const outletContext: DashboardOutletContext = {
-    filters: { engineer, location, damageType, client },
+    filters: { engineer, location, damageType, client, searchId, dateFrom, dateTo },
     data,
     isLoading,
     error,
@@ -99,16 +103,16 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="border-b border-slate-800/50 bg-slate-900/50 backdrop-blur-sm">
+      <header className="shrink-0 border-b border-slate-800/50 bg-slate-900/50 backdrop-blur-sm">
         <div className="px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-2 rounded-lg">
               <Lock className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-white font-semibold">E-Lock Ops Center</h1>
+              <h1 className="text-white font-semibold">Fixed E-Lock Ops Center</h1>
               <p className="text-slate-400 text-xs">Field Service Analytics</p>
             </div>
           </div>
@@ -240,8 +244,31 @@ export default function Dashboard() {
       </header>
 
       {/* Filters */}
-      <div className="px-6 py-4 bg-slate-900/30 border-b border-slate-800/50">
-        <div className="grid grid-cols-4 gap-4">
+      <div className="shrink-0 px-6 py-4 bg-slate-900/30 border-b border-slate-800/50">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-4">
+          <Input
+            value={searchId}
+            onChange={(event) => setSearchId(event.target.value)}
+            placeholder="Search multi filter (ID, issue, client, vehicle, date...)"
+            className="bg-slate-800/50 border-slate-700/50 text-slate-200 placeholder:text-slate-400"
+          />
+
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(event) => setDateFrom(event.target.value)}
+            className="bg-slate-800/50 border-slate-700/50 text-slate-200"
+            aria-label="Reported from date"
+          />
+
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(event) => setDateTo(event.target.value)}
+            className="bg-slate-800/50 border-slate-700/50 text-slate-200"
+            aria-label="Reported to date"
+          />
+
           <Select value={engineer} onValueChange={setEngineer}>
             <SelectTrigger className="bg-slate-800/50 border-slate-700/50 text-slate-200 hover:bg-slate-800/70">
               <SelectValue placeholder="All Engineers" />
@@ -293,7 +320,7 @@ export default function Dashboard() {
       </div>
 
       {/* Content */}
-      <div className="p-6">
+      <div className="flex-1 min-h-0 p-6 overflow-y-auto overflow-x-auto">
         {error ? (
           <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
             {error}

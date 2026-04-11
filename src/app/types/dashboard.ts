@@ -5,6 +5,9 @@ export interface DashboardFilters {
   location: string;
   damageType: string;
   client: string;
+  searchId: string;
+  dateFrom: string;
+  dateTo: string;
 }
 
 export interface DashboardOutletContext {

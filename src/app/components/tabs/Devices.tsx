@@ -46,7 +46,7 @@ export default function Devices() {
       </div>
 
       {/* Device Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border border-cyan-500/30 rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
             <HardDrive className="w-8 h-8 text-cyan-400" />
@@ -148,7 +148,7 @@ export default function Devices() {
             {showingGlobalRecurrences ? "Showing global recurrences" : "Attention Required"}
           </span>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 max-h-[32rem] overflow-y-auto pr-1">
           {deviceRecurrences.length === 0 ? (
             <div className="col-span-2 rounded-lg border border-slate-700/60 bg-slate-900/40 px-4 py-8 text-center text-slate-400">
               No recurring device found in available data.
@@ -209,7 +209,7 @@ export default function Devices() {
       {/* Device List */}
       <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
         <h3 className="text-white font-semibold mb-4">Device Service History</h3>
-        <div className="overflow-x-auto">
+        <div className="max-h-[28rem] overflow-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-700">
@@ -222,7 +222,7 @@ export default function Devices() {
               </tr>
             </thead>
             <tbody>
-              {filteredData.slice(0, 15).map((record, index) => (
+              {filteredData.map((record, index) => (
                 <tr key={`${record.serialNumber}-${index}`} className="border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors">
                   <td className="py-3 px-4 text-cyan-400 font-mono text-sm">{record.serialNumber || 'N/A'}</td>
                   <td className="py-3 px-4">

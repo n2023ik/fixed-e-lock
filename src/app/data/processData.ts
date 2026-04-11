@@ -214,12 +214,21 @@ export function getFilteredData(
     location?: string;
     damageType?: string;
     client?: string;
+    searchId?: string;
+    dateFrom?: string;
+    dateTo?: string;
   }
 ) {
   const engineerFilter = normalizeText(filters.engineer);
   const locationFilter = normalizeText(filters.location);
   const damageTypeFilter = normalizeText(filters.damageType);
   const clientFilter = normalizeText(filters.client);
+  const searchTerms = normalizeText(filters.searchId)
+    .split(/[\s,]+/)
+    .map((term) => term.trim())
+    .filter(Boolean);
+  const fromDate = filters.dateFrom ? new Date(`${filters.dateFrom}T00:00:00`) : null;
+  const toDate = filters.dateTo ? new Date(`${filters.dateTo}T23:59:59`) : null;
 
   return data.filter((record) => {
     if (!isAllSelection(engineerFilter, "engineer") && normalizeText(record.repairedBy) !== engineerFilter) {
@@ -234,6 +243,46 @@ export function getFilteredData(
     if (!isAllSelection(clientFilter, "client") && normalizeText(record.clientName) !== clientFilter) {
       return false;
     }
+    if (searchTerms.length > 0) {
+      const searchableFields = [
+        String(record.sNo),
+        record.serialNumber,
+        record.ticketId,
+        record.vehicleNo,
+        record.issueReported,
+        record.damageType,
+        record.clientName,
+        record.repairedBy,
+        record.location,
+        record.parts,
+        record.rootCause,
+        record.replacedParts,
+        record.reportedDate,
+        record.resolutionDate,
+        record.remarks1,
+        record.remarks2,
+      ];
+
+      const searchableText = searchableFields.map((field) => normalizeText(field)).join(" | ");
+      const matchesAllTerms = searchTerms.every((term) => searchableText.includes(term));
+      if (!matchesAllTerms) {
+        return false;
+      }
+    }
+
+    if (fromDate || toDate) {
+      const recordDate = parseRecordDate(record.reportedDate);
+      if (!recordDate) {
+        return false;
+      }
+      if (fromDate && recordDate < fromDate) {
+        return false;
+      }
+      if (toDate && recordDate > toDate) {
+        return false;
+      }
+    }
+
     return true;
   });
 }
@@ -286,8 +335,7 @@ export function getEngineerLeaderboard(data: RepairRecord[]) {
   });
 
   return Object.values(engineerStats)
-    .sort((a, b) => b.resolved - a.resolved)
-    .slice(0, 5);
+    .sort((a, b) => b.resolved - a.resolved);
 }
 
 export function getLocationHeatmap(data: RepairRecord[]) {

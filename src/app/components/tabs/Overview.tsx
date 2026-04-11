@@ -55,7 +55,13 @@ export default function Overview() {
   const stats = getStats(filteredData);
   const leaderboard = getEngineerLeaderboard(filteredData);
   const locationData = getLocationHeatmap(filteredData);
-  const issueFrequency = getIssueFrequency(filteredData);
+  const filteredIssueFrequency = getIssueFrequency(filteredData);
+  const globalIssueFrequency = getIssueFrequency(data);
+  const showingGlobalIssueFrequency =
+    filteredIssueFrequency.length > 0 &&
+    filteredIssueFrequency.length <= 4 &&
+    globalIssueFrequency.length > filteredIssueFrequency.length;
+  const issueFrequency = showingGlobalIssueFrequency ? globalIssueFrequency : filteredIssueFrequency;
   const versionFailures = getVersionFailures(filteredData);
   const rootCauses = getRootCauseAnalysis(filteredData);
   const damageTypes = getDamageTypeDistribution(filteredData);
@@ -119,7 +125,7 @@ export default function Overview() {
             <h3 className="text-white font-semibold">Engineer Leaderboard</h3>
             <BarChart3 className="w-4 h-4 text-slate-400" />
           </div>
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
             <div className="grid grid-cols-5 gap-2 text-xs text-slate-500 uppercase tracking-wider pb-2 border-b border-slate-700/50">
               <div className="col-span-2">Engineer</div>
               <div className="text-center">Jobs</div>
@@ -191,7 +197,7 @@ export default function Overview() {
               {showingGlobalRecurrences ? "Showing global recurrences" : "Filtered recurrences"}
             </span>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
             {combinedRecurrences.length === 0 ? (
               <div className="rounded-lg border border-slate-700/60 bg-slate-900/40 px-4 py-6 text-center text-slate-400">
                 No recurring device found for the current filters.
@@ -225,7 +231,12 @@ export default function Overview() {
 
         {/* Issue Frequency */}
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
-          <h3 className="text-white font-semibold mb-4">Issue Frequency</h3>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h3 className="text-white font-semibold">Issue Frequency</h3>
+            <span className="text-xs text-slate-400">
+              {showingGlobalIssueFrequency ? "Showing global data" : "Filtered data"}
+            </span>
+          </div>
           <ResponsiveContainer width="100%" height={240}>
             <LineChart data={issueFrequency}>
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" />

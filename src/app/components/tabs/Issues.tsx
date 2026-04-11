@@ -1,6 +1,6 @@
 import { useOutletContext } from "react-router";
 import { AlertCircle, TrendingDown, AlertTriangle } from "lucide-react";
-import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { getFilteredData, getIssueFrequency, getRootCauseAnalysis } from "../../data/processData";
 import type { DashboardOutletContext } from "../../types/dashboard";
 
@@ -11,6 +11,16 @@ export default function Issues() {
 
   const filteredData = getFilteredData(data, filters);
   const issueFrequency = getIssueFrequency(filteredData);
+  const distributionTop = issueFrequency.slice(0, 8);
+  const distributionTopCount = distributionTop.reduce((sum, entry) => sum + entry.value, 0);
+  const distributionOtherCount = Math.max(
+    issueFrequency.reduce((sum, entry) => sum + entry.value, 0) - distributionTopCount,
+    0
+  );
+  const issueDistribution = [
+    ...distributionTop,
+    ...(distributionOtherCount > 0 ? [{ name: "Others", value: distributionOtherCount }] : []),
+  ];
   const rootCauses = getRootCauseAnalysis(filteredData);
 
   // Calculate issue trends
@@ -77,27 +87,45 @@ export default function Issues() {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Issue Distribution */}
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
           <h3 className="text-white font-semibold mb-4">Issue Distribution</h3>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={340}>
             <PieChart>
               <Pie
-                data={issueFrequency}
+                data={issueDistribution}
                 cx="50%"
                 cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                outerRadius={100}
-                fill="#8884d8"
+                outerRadius={92}
                 dataKey="value"
+                labelLine
+                label={({ cx, cy, midAngle, outerRadius, percent, name, index }) => {
+                  const radian = Math.PI / 180;
+                  const radius = Number(outerRadius) + 26;
+                  const x = Number(cx) + radius * Math.cos(-Number(midAngle) * radian);
+                  const y = Number(cy) + radius * Math.sin(-Number(midAngle) * radian);
+
+                  return (
+                    <text
+                      x={x}
+                      y={y}
+                      fill={COLORS[(Number(index) || 0) % COLORS.length]}
+                      textAnchor={x > Number(cx) ? "start" : "end"}
+                      dominantBaseline="central"
+                      fontSize={11}
+                    >
+                      {`${name}: ${(Number(percent) * 100).toFixed(0)}%`}
+                    </text>
+                  );
+                }}
               >
-                {issueFrequency.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                {issueDistribution.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.name === "Others" ? "#64748b" : COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip
+                formatter={(value: number, _name) => [`${value}`, "Occurrences"]}
                 contentStyle={{
                   backgroundColor: '#1e293b',
                   border: '1px solid #334155',
